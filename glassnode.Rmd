@@ -1,0 +1,160 @@
+```{r}
+library(tidyverse)
+```
+
+```{r}
+# to use this, first go to python 'APIs for Glassnode', run that notebook, that will populate apidata.csv with updated data, now good to use
+glassnode <- read_csv("apidata.csv")
+```
+
+```{r}
+# this function removes all of the rows where there is even a single NA
+glassnode <- glassnode[complete.cases(glassnode), ]
+```
+
+```{r}
+a <- mean(glassnode$net_unrealized_profit_loss, na.rm = TRUE)
+b <- sd(glassnode$net_unrealized_profit_loss, na.rm = TRUE)
+
+glassnode <- glassnode %>% mutate(zNUPL = (net_unrealized_profit_loss - a)/b)
+
+
+c <- mean(glassnode$exchange_net_position_change, na.rm = TRUE)
+d <- sd(glassnode$exchange_net_position_change, na.rm = TRUE)
+
+glassnode <- glassnode %>% mutate(zENPC = (exchange_net_position_change - c)/d)
+
+
+e <- mean(glassnode$reserve_risk, na.rm = TRUE)
+f <- sd(glassnode$reserve_risk, na.rm = TRUE)
+
+glassnode <- glassnode %>% mutate(zRR = (reserve_risk - e)/f)
+
+
+g <- mean(glassnode$puell_multiple, na.rm = TRUE)
+h <- sd(glassnode$puell_multiple, na.rm = TRUE)
+
+glassnode <- glassnode %>% mutate(zPM = (puell_multiple - g)/h)
+
+
+i <- mean(glassnode$marketcap_thermocap_ratio, na.rm = TRUE)
+j <- sd(glassnode$marketcap_thermocap_ratio, na.rm = TRUE)
+
+glassnode <- glassnode %>% mutate(zMCTC = (marketcap_thermocap_ratio - i)/j)
+
+
+k <- mean(glassnode$rhodl_ratio, na.rm = TRUE)
+l <- sd(glassnode$rhodl_ratio, na.rm = TRUE)
+
+glassnode <- glassnode %>% mutate(zRHODL = (rhodl_ratio - k)/l)
+
+
+m <- mean(glassnode$sopr_adjusted, na.rm = TRUE)
+n <- sd(glassnode$sopr_adjusted, na.rm = TRUE)
+
+glassnode <- glassnode %>% mutate(zaSOPR = (sopr_adjusted - m)/n)
+
+
+glassnode <- glassnode %>% select(t, price_usd_close, zNUPL, zENPC, zRR, zPM, zMCTC, zRHODL, zaSOPR)
+
+glassnode <- glassnode %>% mutate(zSCORE = zNUPL + zENPC + zRR + zPM + zMCTC + zRHODL + zaSOPR, logprice = log(price_usd_close))
+```
+
+```{r}
+install.packages('zoo')
+library(zoo)
+
+glassnode <- glassnode %>% mutate(thirtydma = rollmean(zSCORE, k = 30, align = "right", fill = 0))
+glassnode <- glassnode %>% mutate(threedma = rollmean(zSCORE, k = 3, align = "right", fill = 0))
+glassnode <- glassnode %>% mutate(sevendma = rollmean(zSCORE, k = 7, align = "right", fill = 0))
+glassnode <- glassnode %>% mutate(fourteendma = rollmean(zSCORE, k = 14, align = "right", fill = 0))
+glassnode <- glassnode %>% mutate(sixtydma = rollmean(zSCORE, k = 60, align = "right", fill = 0))
+glassnode <- glassnode %>% mutate(nintydma = rollmean(zSCORE, k = 90, align = "right", fill = 0))
+
+glassnode <- glassnode %>% mutate(change = thirtydma - lag(thirtydma))
+glassnode <- glassnode %>% mutate(changema = rollmean(change, k = 30, align = "right", fill = 0))
+```
+
+```{r}
+install.packages("patchwork")
+library(patchwork)
+
+p1 <- ggplot() + geom_point(data=glassnode, aes(x=t, y=zSCORE), color = 'red') 
+
+p2 <- ggplot() + geom_point(data=glassnode, aes(x = t, y = logprice), color = 'grey') 
+
+p1 + p2
+```
+
+```{r}
+library(lubridate)
+bydate <- glassnode %>% filter(t>=as.Date('2021-01-01')&t<=as.Date('2021-12-31'))
+bydate <- bydate %>% mutate(logprice = logprice - mean(bydate$logprice, na.rm = TRUE))
+
+# Value used to transform the data
+coeff <- .1
+
+ggplot(data = bydate, aes(x=t)) +
+  
+  geom_line(aes(y=zSCORE), color = 'red') + 
+  geom_line(aes(y=logprice / coeff)) + # Divide by 10 to get the same range than the temperature
+  
+  scale_y_continuous(
+    
+    # Features of the first axis
+    name = "zSCORE",
+    
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.*coeff, name="logPRICE")
+  ) + geom_hline(yintercept = 6)
+```
+
+
+```{r}
+library(lubridate)
+bydate <- glassnode %>% filter(t>=as.Date('2021-01-01')&t<=as.Date('2021-12-30'))
+bydate <- bydate %>% mutate(logprice = logprice - mean(bydate$logprice, na.rm = TRUE))
+
+# Value used to transform the data
+coeff <- .1
+
+ggplot(data = bydate, aes(x=t)) +
+  
+  geom_line(aes(y=thirtydma), color = 'red') + geom_line(aes(y=sevendma), color = "green") + geom_line(aes(y=fourteendma), color = "orange") + geom_line(aes(y=nintydma), color = "grey") +
+  geom_line(aes(y=logprice / coeff)) + # Divide by 10 to get the same range than the temperature
+  
+  scale_y_continuous(
+    
+    # Features of the first axis
+    name = "zSCORE",
+    
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.*coeff, name="logPRICE")
+  ) + geom_hline(yintercept = 6)
+```
+
+
+
+```{r}
+library(lubridate)
+bydate <- glassnode %>% filter(t>=as.Date('2018-01-01')&t<=as.Date('2019-12-31'))
+bydate <- bydate %>% mutate(logprice = logprice - mean(bydate$logprice, na.rm = TRUE))
+
+# Value used to transform the data
+coeff <- 1
+
+ggplot(data = bydate, aes(x=t)) +
+  
+  geom_line(aes(y=changema), color = 'red') + 
+  geom_line(aes(y=logprice / coeff)) + # Divide by 10 to get the same range than the temperature
+  
+  scale_y_continuous(
+    
+    # Features of the first axis
+    name = "change",
+    
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.*coeff, name="logPRICE")
+  ) + geom_hline(yintercept = 0)
+```
+

@@ -1,0 +1,26 @@
+```{r}
+library(plotly)
+library(quantmod)
+
+getSymbols("^GSPC", src='yahoo')
+```
+
+
+```{r}
+SPX <- read.csv("SP_SPX, 12M.csv")
+
+SPX <- data.frame(Date=index(SPX), coredata(SPX))
+#SPX <- tail(SPX, 30)
+
+fig <- SPX %>% plot_ly(x = ~time, type="candlestick",
+          open = ~X10y_open, close = ~X10y_close,
+          high = ~X10y_high, low = ~X10y_low) 
+fig <- fig %>% layout(title = "Decade Long Candles")
+
+fig <- layout(fig, 
+              yaxis = list(type = "log"))
+
+fig
+```
+
+

@@ -1,0 +1,18 @@
+```{r}
+library(tidyverse)
+library(zoo)
+
+SPX <- read.csv("SP_SPX, 1D (1).csv")
+```
+
+```{r}
+# SPX <- SPX %>% mutate(smoothed20yr = rollmean(boring, k=365, fill=NA),
+#                       smoothed20yrLEV = rollmean(leveraged20yr, k=365, fill=NA),
+#                       gooddecision = ifelse(leveraged20yr > index20yr, 1, 0))
+
+ggplot() + 
+  geom_line(data=SPX, aes(x=time, y=boring), color="red")+
+  geom_line(data=SPX, aes(x=time, y=fun), color="green")
+  #scale_y_continuous(limits = c(0,2))
+```
+

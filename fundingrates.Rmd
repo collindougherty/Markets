@@ -1,0 +1,23 @@
+```{R}
+library(tidyverse)
+library(readxl)
+funding <- read_excel("binancefundingrates1.csv.xlsx")
+detach(funding)
+detach(funding)
+detach(funding)
+attach(funding)
+```
+
+```{r}
+model <- lm(`mvavg`~`Funding Rate`)
+summary(model)
+```
+
+```{r}
+plot1 <- ggplot() + geom_point(data=funding, aes(x=`Date`, y=`Funding Rate`))
+plot2<- ggplot() + geom_line(data=funding, aes(x=`Date`, y=mvavg), color="red")
+library(cowplot)
+plot_grid(plot1,plot2)
+```
+
+
